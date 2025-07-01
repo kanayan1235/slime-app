@@ -1,1 +1,89 @@
-<!-- フロント用のHTMLここに記述 -->
+<!-- フロント用の<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スライムレイン画像合成</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #eef2f3;
+      padding: 30px;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    #upload-area {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      display: inline-block;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+    progress {
+      width: 100%;
+      height: 20px;
+    }
+    #result {
+      margin-top: 20px;
+    }
+    img {
+      max-width: 100%;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>☔ スライムレイン画像合成アプリ</h1>
+
+  <div id="upload-area">
+    <input type="file" id="fileInput" accept="image/*">
+    <br>
+    <button onclick="uploadFile()">画像アップロード</button>
+    <br>
+    <progress id="progressBar" value="0" max="100" style="display:none;"></progress>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function uploadFile() {
+      const fileInput = document.getElementById('fileInput');
+      const progressBar = document.getElementById('progressBar');
+      const result = document.getElementById('result');
+
+      if (!fileInput.files[0]) {
+        alert("画像を選択してください。");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      progressBar.style.display = 'block';
+      progressBar.value = 0;
+
+      result.innerHTML = "アップロード中...";
+
+      const response = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      progressBar.value = 100;
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        result.innerHTML = `<strong>合成結果:</strong><br><img src="${url}"><br><a href="${url}" download="slime_result.png">画像を保存</a>`;
+      } else {
+        result.innerHTML = "アップロードに失敗しました。";
+      }
+    }
+  </script>
+</body>
+</html>ここに記述 -->
