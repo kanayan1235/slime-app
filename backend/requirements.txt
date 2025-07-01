@@ -2,4 +2,4 @@ fastapi
 uvicorn
 Pillow
 numpy
-matplotlib
+python-multipart
