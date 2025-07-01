@@ -1,1 +1,6 @@
-# FastAPI コードをここに記述
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}# FastAPI コードをここに記述
