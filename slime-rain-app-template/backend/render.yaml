@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: slime-rain-api
-    env: python
-    plan: free
-    buildCommand: ""
-    startCommand: ./start.sh
