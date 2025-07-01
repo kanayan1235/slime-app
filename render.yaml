@@ -2,9 +2,6 @@ services:
   - type: web
     name: slime-rain-app
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host=0.0.0.0 --port=10000
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host=0.0.0.0 --port=$PORT
     plan: free
-    envVars:
-      - key: PORT
-        value: 10000
