@@ -21,7 +21,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
   formData.append("file", file);
 
   try {
-    const res = await fetch("https://slime-app-backend.onrender.com/upload", {
+    const res = await fetch("https://slime-app-content.onrender.com/upload", {
       method: "POST",
       body: formData,
     });
