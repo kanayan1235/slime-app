@@ -1,22 +1,52 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>スライム画像合成アプリ</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>スライム合成アプリ</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2em; }
+    input[type="file"] { margin: 1em; }
+    progress { width: 50%; height: 20px; display: none; }
+    img { margin-top: 1em; max-width: 80%; }
+  </style>
 </head>
 <body>
-  <h1>スライム画像合成ジェネレーター</h1>
+  <h1>スライム合成メーカー</h1>
   <form id="upload-form">
     <input type="file" id="image-input" accept="image/*" required />
-    <button type="submit">画像をアップロード</button>
+    <button type="submit">アップロードして合成</button>
   </form>
-  <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
-  <div id="preview-container">
-    <h2>合成結果</h2>
-    <img id="result-image" src="" alt="合成結果" />
-  </div>
-  <script src="script.js"></script>
+  <progress id="progress-bar" value="0" max="100"></progress>
+  <br />
+  <img id="result-image" />
+  <script>
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('image-input');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const progress = document.getElementById('progress-bar');
+      progress.style.display = "block";
+      progress.value = 10;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("https://slime-app-backend.onrender.com/upload", {
+          method: "POST",
+          body: formData,
+        });
+        progress.value = 80;
+        const blob = await res.blob();
+        const imgUrl = URL.createObjectURL(blob);
+        document.getElementById('result-image').src = imgUrl;
+        progress.value = 100;
+      } catch (err) {
+        alert("アップロードに失敗しました。");
+      }
+    });
+  </script>
 </body>
 </html>
