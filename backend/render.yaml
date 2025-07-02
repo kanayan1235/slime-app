@@ -1,7 +1,11 @@
+
 services:
   - type: web
-    name: slime-rain-api
+    name: slime-app-backend
     env: python
     plan: free
     buildCommand: ""
-    startCommand: ./start.sh
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
