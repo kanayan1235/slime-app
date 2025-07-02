@@ -1,5 +1,5 @@
 services:
   - type: static
-    name: slime-rain-frontend
+    name: frontend
     staticPublishPath: .
     buildCommand: ""
