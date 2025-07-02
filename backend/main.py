@@ -1,13 +1,16 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
-import os, random, math
+import os
+import random
+import math
 from uuid import uuid4
 
 app = FastAPI()
 
+# CORS 設定
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,72 +18,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "uploads"
-KEFIR_DIR = "kefirs"
-RESULT_IMG = "result.png"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_FOLDER = "uploads"
+OUTPUT_FOLDER = "outputs"
+KEFIR_FOLDER = "kefirs"
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+os.makedirs(KEFIR_FOLDER, exist_ok=True)  # 空でもOK
+
+def stretch_slime(img, scale_y=1.5):
+    w, h = img.size
+    return img.resize((w, int(h * scale_y)), resample=Image.BICUBIC)
+
+def apply_alpha_gradient(img, min_alpha=0.7):
+    arr = np.array(img)
+    h = arr.shape[0]
+    gradient = np.linspace(0.95, min_alpha, h).reshape(-1, 1)
+    alpha = arr[:, :, 3].astype(np.float32)
+    arr[:, :, 3] = (alpha * gradient).astype(np.uint8)
+    return Image.fromarray(arr, 'RGBA')
+
+def rotate_toward_center(x, y, cx, cy):
+    dx, dy = cx - x, cy - y
+    return math.degrees(math.atan2(dy, dx)) - 90
+
+def generate_slime(canvas_size, count=25):
+    canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    slime_paths = [os.path.join(KEFIR_FOLDER, f) for f in os.listdir(KEFIR_FOLDER) if f.endswith((".png", ".jpg"))]
+    if not slime_paths:
+        return canvas
+    for _ in range(count):
+        slime_img = Image.open(random.choice(slime_paths)).convert("RGBA")
+        scale = random.uniform(0.1, 0.4)
+        slime = slime_img.resize((int(slime_img.width * scale), int(slime_img.height * scale)))
+        slime = stretch_slime(slime, random.uniform(1.2, 1.8))
+        slime = apply_alpha_gradient(slime)
+        x = random.randint(0, canvas_size[0])
+        y = random.randint(0, canvas_size[1])
+        angle = rotate_toward_center(x, y, canvas_size[0]//2, canvas_size[1]//2)
+        rotated = slime.rotate(angle, expand=True)
+        canvas.paste(rotated, (x, y), rotated)
+    return canvas
 
 @app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
+async def upload(file: UploadFile = File(...)):
+    # 📁 画像保存
     filename = f"{uuid4().hex}_{file.filename}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
+    upload_path = os.path.join(UPLOAD_FOLDER, filename)
+    with open(upload_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
 
-    with open(filepath, "wb") as f:
-        f.write(await file.read())
+    # 📷 読み込みと合成
+    base_img = Image.open(upload_path).convert("RGBA")
+    rain_layer = generate_slime(base_img.size, count=40)
+    result = Image.alpha_composite(base_img, rain_layer)
 
-    final_path = slime_rain_process(filepath)
-    return FileResponse(final_path, media_type="image/png")
-
-def slime_rain_process(img_path):
-    img = Image.open(img_path).convert("RGBA")
-    canvas_w, canvas_h = img.size
-
-    def stretch(img, y_scale): return img.resize((img.width, int(img.height * y_scale)))
-    def alpha_gradient(img, min_a=0.7):
-        arr = np.array(img)
-        h = arr.shape[0]
-        gradient = np.linspace(0.95, min_a, h).reshape(-1, 1)
-        arr[..., 3] = (arr[..., 3] * gradient).astype(np.uint8)
-        return Image.fromarray(arr, 'RGBA')
-    def angle_to_center(x, y, cx, cy): return math.degrees(math.atan2(cy - y, cx - x)) - 90
-    def wet_effect(base, mask, strength=0.2):
-        arr = np.array(base).astype(np.float32)
-        mask = mask / 255.0
-        for c in range(3):
-            arr[..., c] *= (1 - mask * strength)
-        return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
-    def get_mask(rain): return (np.array(rain)[..., 3] > 30).astype(np.uint8) * 255
-
-    rain_files = [os.path.join(KEFIR_DIR, f) for f in os.listdir(KEFIR_DIR) if f.lower().endswith(('.png', '.jpg'))]
-
-    def draw_rain(n, sticky=False):
-        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        for _ in range(n):
-            r = Image.open(random.choice(rain_files)).convert("RGBA")
-            s = random.uniform(0.1, 0.3) if not sticky else random.uniform(0.15, 0.25)
-            r = r.resize((int(r.width * s), int(r.height * s)))
-            r = stretch(r, random.uniform(1.5, 2.0) if not sticky else random.uniform(2.0, 2.5))
-            r = alpha_gradient(r)
-            if sticky:
-                r = r.filter(ImageFilter.GaussianBlur(radius=1.2))
-                x = random.randint(canvas_w // 5, canvas_w * 4 // 5)
-                y = random.randint(int(canvas_h * 0.7), int(canvas_h * 0.95))
-            else:
-                x = random.randint(0, canvas_w)
-                y = random.randint(0, canvas_h // 2)
-                tx, ty = canvas_w // 2, canvas_h * 3 // 4
-                angle = angle_to_center(x, y, tx, ty)
-                r = r.rotate(angle, expand=True)
-            layer.paste(r, (x, y), r)
-        return layer
-
-    rain1 = draw_rain(30)
-    rain2 = draw_rain(20, sticky=True)
-    combined = Image.alpha_composite(rain1, rain2)
-    mask = get_mask(combined)
-    wet = wet_effect(img, mask)
-    final = Image.alpha_composite(wet, combined)
-
-    out_path = os.path.join(UPLOAD_DIR, RESULT_IMG)
-    final.save(out_path)
-    return out_path
+    # 📦 保存して返す
+    output_path = os.path.join(OUTPUT_FOLDER, f"result_{filename}.png")
+    result.save(output_path)
+    return FileResponse(output_path, media_type="image/png")
