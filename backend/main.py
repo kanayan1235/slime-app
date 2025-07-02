@@ -31,3 +31,12 @@ async def upload_image(file: UploadFile = File(...)):
     composed.save(output, format="PNG")
     output.seek(0)
     return StreamingResponse(output, media_type="image/png")
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/static", StaticFiles(directory="frontend", html=True), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    with open("frontend/index.html", encoding="utf-8") as f:
+        return f.read()
