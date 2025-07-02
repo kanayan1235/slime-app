@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
@@ -8,7 +8,13 @@ import random
 import math
 from uuid import uuid4
 
+
 app = FastAPI()
+
+@app.post("/upload")
+async def upload_image(file: UploadFile = File(...)
+                       
+
 
 # CORS 設定
 app.add_middleware(
