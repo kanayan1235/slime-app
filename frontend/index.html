@@ -21,9 +21,11 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
   formData.append("file", file);
 
   try {
-    const res = await fetch("https://slime-app-content.onrender.com/upload", {
-      method: "POST",
-      body: formData,
+    // frontend/index.html の fetch URL を完全指定にする
+const res = await fetch("https://slime-app-template.onrender.com/upload", {
+  method: "POST",
+  body: formData,
+});
     });
     progress.value = 80;
     const blob = await res.blob();
