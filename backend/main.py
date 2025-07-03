@@ -55,4 +55,4 @@ async def upload(file: UploadFile = File(...)):
     out_path = os.path.join(RESULT_FOLDER, f"{uuid.uuid4().hex}.png")
     combined.save(out_path)
 
-    return FileResponse(out_path, media_type="image/png")
+ return FileResponse(f"uploaded_{file.filename}")
