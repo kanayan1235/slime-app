@@ -23,7 +23,7 @@ cloudinary.config(
 app = FastAPI()
 
 # static フォルダ公開（画像素材やCSS）
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static/kefirs", StaticFiles(directory="static/kefirs"), name="static")
 
 # ルートで index.html を返す
 @app.get("/", response_class=HTMLResponse)
@@ -40,11 +40,11 @@ async def upload(request: Request, file: UploadFile = File(...)):
 
     # スライム雨素材の中からランダム選択（.jpg, .jpeg, .png）
     rain_candidates = [
-        f for f in os.listdir("static") if f.lower().endswith((".jpg", ".jpeg", ".png"))
+        f for f in os.listdir("static/kefirs") if f.lower().endswith((".jpg", ".jpeg", ".png"))
     ]
     if not rain_candidates:
         return HTMLResponse("<h1>スライム素材が見つかりません</h1>", status_code=500)
-    rain_path = os.path.join("static", random.choice(rain_candidates))
+    rain_path = os.path.join("static/kefirs", random.choice(rain_candidates))
     rain_img = Image.open(rain_path).convert("RGBA")
 
     # 雨素材の縮小（スライム雨サイズ調整）
