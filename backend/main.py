@@ -3,8 +3,25 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import os, random, uuid
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+
+# 静的ファイル（frontend）のマウント
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# `/` にアクセスしたら index.html を返す
+@app.get("/")
+def read_root():
+    return FileResponse("static/index.html")
+
+# アップロード処理（例）
+@app.post("/upload")
+async def upload_image(file: UploadFile = File(...)):
+    contents = await file.read()
+    with open(f"uploaded_{file.filename}", "wb") as f:
+        f.write(contents)
+    return FileResponse(f"uploaded_{file.filename}"
 
 app.add_middleware(
     CORSMiddleware,
