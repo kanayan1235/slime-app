@@ -10,9 +10,10 @@ from io import BytesIO
 
 app = FastAPI()
 
-# 静的ファイル（index.htmlなど）提供
-app.mount("/", StaticFiles(directory="backend/static", html=True), name="static")
+from fastapi.staticfiles import StaticFiles
 
+# ⛳ static をルートからマウント
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 # 画像合成系関数（コラボと同じ処理）
 def stretch_slime(img, scale_y=5.5):
     w, h = img.size
