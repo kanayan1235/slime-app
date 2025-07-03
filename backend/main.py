@@ -1,15 +1,16 @@
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
-from dotenv import load_dotenv
 import os
-from PIL import Image
-import io
 import random
+import io
+from PIL import Image, ImageEnhance
+import numpy as np
 
-# 環境変数の読み込み
+# 環境変数読み込み
 load_dotenv()
 
 # Cloudinary設定
@@ -19,68 +20,71 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
-# FastAPIアプリ初期化
 app = FastAPI()
 
-# static ディレクトリのマウント
+# static フォルダ公開（画像素材やCSS）
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# index.htmlをルートで表示
+# ルートで index.html を返す
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     return FileResponse("static/index.html")
 
-# アップロード処理と画像合成＋Cloudinaryアップロード
+
+# アップロード＆スライム雨合成
 @app.post("/upload")
 async def upload(request: Request, file: UploadFile = File(...)):
-    image = Image.open(file.file).convert("RGBA")
-    width, height = image.size
+    # キャラ画像読み込み（RGBA）
+    char_img = Image.open(file.file).convert("RGBA")
+    width, height = char_img.size
 
-    # スライム雨素材（.jpg/.jpeg/.pngのいずれか）を読み込み
-    rain_path = None
-    for fname in os.listdir("static"):
-        if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-            rain_path = os.path.join("static", fname)
-            break
-
-    if not rain_path:
-        return HTMLResponse("<h1>雨素材画像が見つかりません</h1>", status_code=400)
-
+    # スライム雨素材の中からランダム選択（.jpg, .jpeg, .png）
+    rain_candidates = [
+        f for f in os.listdir("static") if f.lower().endswith((".jpg", ".jpeg", ".png"))
+    ]
+    if not rain_candidates:
+        return HTMLResponse("<h1>スライム素材が見つかりません</h1>", status_code=500)
+    rain_path = os.path.join("static", random.choice(rain_candidates))
     rain_img = Image.open(rain_path).convert("RGBA")
 
-    # ランダムな雨の合成
-    for _ in range(100):
-        scale = random.uniform(0.1, 0.2)
-        rain_resized = rain_img.resize(
-            (int(rain_img.width * scale), int(rain_img.height * scale))
-        )
-        x = random.randint(0, width - rain_resized.width)
-        y = random.randint(0, height - rain_resized.height)
-        image.alpha_composite(rain_resized, dest=(x, y))
+    # 雨素材の縮小（スライム雨サイズ調整）
+    scale = random.uniform(0.1, 0.2)
+    rain_size = (int(rain_img.width * scale), int(rain_img.height * scale))
+    rain_img = rain_img.resize(rain_size)
 
-    # JPEG変換（白背景にする）
-    background = Image.new("RGB", image.size, (255, 255, 255))
-    background.paste(image, mask=image.split()[3])
+    # 合成キャンバス作成
+    combined = char_img.copy()
 
-    # Cloudinaryにアップロード
+    # ランダムな位置にスライム雨を複数合成
+    num_rain = random.randint(20, 35)
+    for _ in range(num_rain):
+        x = random.randint(0, width - rain_size[0])
+        y = random.randint(0, int(height * 0.6))  # 上半分を中心に
+        combined.alpha_composite(rain_img, (x, y))
+
+    # RGBA → RGB（白背景合成）
+    background = Image.new("RGB", combined.size, (255, 255, 255))
+    background.paste(combined, mask=combined.split()[3])
+
+    # Cloudinaryへアップロード
     buffer = io.BytesIO()
     background.save(buffer, format="JPEG")
     buffer.seek(0)
     result = cloudinary.uploader.upload(buffer, folder="uploads/")
     image_url = result.get("secure_url")
 
-    # レスポンスHTML
+    # HTMLレスポンス返却
     html_content = f"""
     <!DOCTYPE html>
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
-        <title>合成完了</title>
+        <title>合成結果</title>
         <link rel="stylesheet" href="/static/style.css">
     </head>
     <body>
         <h1>スライム雨 合成完了！</h1>
-        <p>以下がアップロード画像と雨の合成結果です。</p>
+        <p>以下が合成結果です：</p>
         <img src="{image_url}" alt="合成画像" style="max-width: 100%; height: auto;">
         <br><br>
         <a href="/">← 戻る</a>
