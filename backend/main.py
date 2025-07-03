@@ -1,91 +1,123 @@
+# 📦 必要ライブラリ
 from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
-import os
-import random
-import io
-from PIL import Image, ImageEnhance
+from dotenv import load_dotenv
+from PIL import Image
 import numpy as np
+import random
+import math
+import os
+import io
 
-# 環境変数読み込み
+# 🌍 環境変数の読み込み
 load_dotenv()
-
-# Cloudinary設定
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
     api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
+# 🚀 FastAPI初期化とstaticフォルダのマウント
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# static フォルダ公開（画像素材やCSS）
-app.mount("/static/kefirs", StaticFiles(directory="static/kefirs"), name="static")
+# 🎨 画像加工関数
+def stretch_slime(img, scale_y=5.5):
+    w, h = img.size
+    return img.resize((w, int(h * scale_y)), resample=Image.BICUBIC)
 
-# ルートで index.html を返す
+def apply_alpha_gradient(img, min_alpha=0.6):
+    arr = np.array(img)
+    h = arr.shape[0]
+    gradient = np.linspace(1.0, min_alpha, h).reshape(-1, 1)
+    alpha = arr[:, :, 3].astype(np.float32)
+    alpha = (alpha * gradient).astype(np.uint8)
+    arr[:, :, 3] = alpha
+    return Image.fromarray(arr, 'RGBA')
+
+def rotate_toward_center(x, y, cx, cy):
+    dx = cx - x
+    dy = cy - y
+    angle = math.degrees(math.atan2(dy, dx)) - 90
+    return angle
+
+def generate_slime_rain_field(base_img, canvas_size, center_x, center_y, count=120):
+    canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    for _ in range(count):
+        scale = random.uniform(0.1, 0.8)
+        w, h = base_img.size
+        new_size = (int(w * scale), int(h * scale))
+        slime = base_img.resize(new_size, resample=Image.BICUBIC)
+        slime = stretch_slime(slime, scale_y=random.uniform(1.3, 2.0))
+        slime = apply_alpha_gradient(slime)
+
+        x = random.randint(0, canvas_size[0])
+        y = random.randint(0, canvas_size[1] // 2)
+        angle = rotate_toward_center(x, y, center_x, center_y)
+        rotated = slime.rotate(angle, expand=True, resample=Image.BICUBIC)
+        canvas.paste(rotated, (x, y), rotated)
+    return canvas
+
+def get_contact_mask(slime_rgba):
+    alpha = np.array(slime_rgba)[:, :, 3]
+    return (alpha > 30).astype(np.uint8) * 255
+
+def apply_wet_effect(base_rgba, contact_mask, intensity=0.35):
+    base_arr = np.array(base_rgba).astype(np.float32)
+    mask = contact_mask / 255.0
+    for c in range(3):
+        base_arr[:, :, c] *= (1 - mask * intensity)
+    base_arr = np.clip(base_arr, 0, 255).astype(np.uint8)
+    return Image.fromarray(base_arr, 'RGBA')
+
+# 🏠 ルート：アップロードフォーム
 @app.get("/", response_class=HTMLResponse)
-async def serve_index():
+async def index():
     return FileResponse("static/index.html")
 
-
-# アップロード＆スライム雨合成
+# 📤 POST：画像アップロードと合成処理
 @app.post("/upload")
-async def upload(request: Request, file: UploadFile = File(...)):
-    # キャラ画像読み込み（RGBA）
-    char_img = Image.open(file.file).convert("RGBA")
-    width, height = char_img.size
+async def upload(file: UploadFile = File(...)):
+    character_img = Image.open(file.file).convert("RGBA")
+    canvas_w, canvas_h = character_img.size
+    center_x, center_y = canvas_w // 2, canvas_h // 2
 
-    # スライム雨素材の中からランダム選択（.jpg, .jpeg, .png）
-    rain_candidates = [
-        f for f in os.listdir("static/kefirs") if f.lower().endswith((".jpg", ".jpeg", ".png"))
-    ]
-    if not rain_candidates:
-        return HTMLResponse("<h1>スライム素材が見つかりません</h1>", status_code=500)
-    rain_path = os.path.join("static/kefirs", random.choice(rain_candidates))
-    rain_img = Image.open(rain_path).convert("RGBA")
+    # 📂 backend/kefirs 内からPNG/JPEG画像をランダム選択
+    kefir_dir = "backend/kefirs"
+    candidates = [f for f in os.listdir(kefir_dir) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+    slime_path = os.path.join(kefir_dir, random.choice(candidates))
+    slime_img = Image.open(slime_path).convert("RGBA")
 
-    # 雨素材の縮小（スライム雨サイズ調整）
-    scale = random.uniform(0.1, 0.2)
-    rain_size = (int(rain_img.width * scale), int(rain_img.height * scale))
-    rain_img = rain_img.resize(rain_size)
+    slime_field = generate_slime_rain_field(slime_img, character_img.size, center_x, center_y)
+    contact_mask = get_contact_mask(slime_field)
+    character_wet = apply_wet_effect(character_img, contact_mask, intensity=0.4)
+    combined = Image.alpha_composite(character_wet, slime_field)
 
-    # 合成キャンバス作成
-    combined = char_img.copy()
-
-    # ランダムな位置にスライム雨を複数合成
-    num_rain = random.randint(20, 35)
-    for _ in range(num_rain):
-        x = random.randint(0, width - rain_size[0])
-        y = random.randint(0, int(height * 0.6))  # 上半分を中心に
-        combined.alpha_composite(rain_img, (x, y))
-
-    # RGBA → RGB（白背景合成）
+    # JPEGへ変換してCloudinaryへ保存
     background = Image.new("RGB", combined.size, (255, 255, 255))
     background.paste(combined, mask=combined.split()[3])
-
-    # Cloudinaryへアップロード
     buffer = io.BytesIO()
     background.save(buffer, format="JPEG")
     buffer.seek(0)
+
     result = cloudinary.uploader.upload(buffer, folder="uploads/")
     image_url = result.get("secure_url")
 
-    # HTMLレスポンス返却
+    # HTMLを直接返す
     html_content = f"""
     <!DOCTYPE html>
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
-        <title>合成結果</title>
+        <title>スライム雨合成</title>
         <link rel="stylesheet" href="/static/style.css">
     </head>
     <body>
         <h1>スライム雨 合成完了！</h1>
-        <p>以下が合成結果です：</p>
-        <img src="{image_url}" alt="合成画像" style="max-width: 100%; height: auto;">
+        <img src="{image_url}" alt="合成画像" style="max-width: 100%;">
         <br><br>
         <a href="/">← 戻る</a>
     </body>
