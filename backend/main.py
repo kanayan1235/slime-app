@@ -1,49 +1,48 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
+from fastapi.responses import JSONResponse
 import numpy as np
+import cloudinary
+import cloudinary.uploader
+import os
 import math
 import random
-import os
-import shutil
+import io
+
+# Cloudinary 設定
+cloudinary.config(
+    cloud_name="dgdqrrrzx",
+    api_key="957982971854726",
+api_secret="to_cKnWIXNVuLu7FE1Ze1pgzhX4",
+    secure=True
+)
 
 app = FastAPI()
 
-# パス設定
-UPLOAD_DIR = "backend/uploaded"
-RESULT_DIR = "backend/results"
-STATIC_DIR = "static"
+# static フォルダ公開（任意）
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# フォルダ設定
 KEFIR_DIR = "backend/kefirs"
 
-# 必要なフォルダを作成
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(RESULT_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
-
-# 静的ファイルを /static/ で公開
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-
 def get_random_kefir_image():
-    """kefirsフォルダからjpeg/pngをランダムに1枚取得"""
     valid_exts = (".jpg", ".jpeg", ".png")
     candidates = [f for f in os.listdir(KEFIR_DIR) if f.lower().endswith(valid_exts)]
     if not candidates:
-        raise FileNotFoundError("ケフィア画像が見つかりません（jpeg/png）。")
-    selected = random.choice(candidates)
-    return os.path.join(KEFIR_DIR, selected)
-
+        raise FileNotFoundError("kefir画像が見つかりません（jpeg/png）")
+    return os.path.join(KEFIR_DIR, random.choice(candidates))
 
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)):
-    upload_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(upload_path, "wb") as f:
-        f.write(await file.read())
+async def upload_image(file: UploadFile = File(...)):
+    # 入力画像読み込み
+    image_bytes = await file.read()
+    character_img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
 
-    character_img = Image.open(upload_path).convert("RGBA")
+    # 雨画像の読み込み
     kefir_path = get_random_kefir_image()
     rain_base = Image.open(kefir_path).convert("RGBA")
+
     canvas_w, canvas_h = character_img.size
     center_x, center_y = canvas_w // 2, canvas_h // 2
 
@@ -96,34 +95,23 @@ async def upload(file: UploadFile = File(...)):
         base_arr = np.clip(base_arr, 0, 255).astype(np.uint8)
         return Image.fromarray(base_arr, 'RGBA')
 
+    # 合成処理
     slime_field = generate_slime_rain_field(rain_base, character_img.size)
     contact_mask = get_contact_mask(slime_field)
     character_wet = apply_wet_effect(character_img, contact_mask, intensity=0.4)
     combined = Image.alpha_composite(character_wet, slime_field)
 
-    result_filename = f"result_{file.filename}"
-    result_path = os.path.join(RESULT_DIR, result_filename)
+    # メモリに保存
+    buffer = io.BytesIO()
+    combined.save(buffer, format="PNG")
+    buffer.seek(0)
 
-    # 保存形式を拡張子で分岐（JPEGはRGBA非対応）
-    ext = os.path.splitext(file.filename)[-1].lower()
-    if ext in [".jpg", ".jpeg"]:
-        combined = combined.convert("RGB")
-        combined.save(result_path, format="JPEG")
-        media_type = "image/jpeg"
-    else:
-        combined.save(result_path)
-        media_type = "image/png"
+    # Cloudinaryにアップロード
+    result = cloudinary.uploader.upload(
+        buffer,
+        resource_type="image",
+        public_id=f"slime_rain/result_{file.filename}",
+        overwrite=True
+    )
 
-    # static に公開
-    public_path = os.path.join(STATIC_DIR, result_filename)
-    shutil.copyfile(result_path, public_path)
-
-    return FileResponse(public_path, media_type=media_type)
-
-from fastapi.responses import HTMLResponse
-
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    with open(index_path, encoding="utf-8") as f:
-        return f.read()
+    return JSONResponse({"url": result["secure_url"]})
