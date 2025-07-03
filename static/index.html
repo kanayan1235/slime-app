@@ -2,35 +2,63 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>スライム雨合成</title>
+  <title>スライム雨合成アプリ</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 40px; }
+    img { max-width: 80%; margin-top: 20px; border: 1px solid #ccc; }
+    #progress-bar { width: 300px; }
+  </style>
 </head>
 <body>
-  <h1>ケフィア雨合成</h1>
-  <form id="upload-form">
+  <h1>スライム雨 合成アプリ</h1>
+
+  <form id="upload-form" enctype="multipart/form-data">
     <input type="file" id="image-input" name="file" accept="image/*" />
     <button type="submit">アップロードして合成</button>
-    <progress id="progress" value="0" max="100" style="display:none;"></progress>
+    <br><br>
+    <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
   </form>
-  <br />
-  <img id="result-image" style="max-width: 400px;" />
+
+  <img id="result-image" alt="合成画像が表示されます" />
+
   <script>
     document.getElementById("upload-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const file = document.getElementById("image-input").files[0];
-      if (!file) return alert("画像を選択してください");
+      const fileInput = document.getElementById("image-input");
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("画像を選択してください。");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
-      const progress = document.getElementById("progress");
+
+      const progress = document.getElementById("progress-bar");
       progress.style.display = "block";
+      progress.value = 10;
+
       try {
-        const res = await fetch("/upload", { method: "POST", body: formData });
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        progress.value = 80;
+
+        if (!res.ok) {
+          alert("アップロードに失敗しました。");
+          return;
+        }
+
+        // 合成画像を表示
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        document.getElementById("result-image").src = url;
-        progress.style.display = "none";
-      } catch (err) {
-        alert("合成に失敗しました");
-        progress.style.display = "none";
+        const imgUrl = URL.createObjectURL(blob);
+        document.getElementById("result-image").src = imgUrl;
+        progress.value = 100;
+      } catch (error) {
+        alert("エラーが発生しました。");
+        console.error(error);
       }
     });
   </script>
