@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+わfrom fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
@@ -21,7 +21,7 @@ async def upload_image(file: UploadFile = File(...)):
     contents = await file.read()
     with open(f"uploaded_{file.filename}", "wb") as f:
         f.write(contents)
-    return FileResponse(f"uploaded_{file.filename}"
+    return FileResponse(f"uploaded_{file.filename})"
 
 app.add_middleware(
     CORSMiddleware,
