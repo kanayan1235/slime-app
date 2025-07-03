@@ -1,33 +1,17 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-import os
-import shutil
-
-from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from PIL import Image, ImageDraw
+import io
 
 app = FastAPI()
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    # 何か処理して return Response()
+    image = Image.open(file.file).convert("RGBA")
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((50, 50, 150, 150), fill=(0, 255, 0, 128))  # 仮スライム合成
 
-# 🔓 CORSの許可（JSからのアクセスを許可）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-UPLOAD_DIR = "uploaded"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-@app.post("/upload")
-async def upload(file: UploadFile = File(...)):
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # 🟡保存したファイルをそのまま返却
-    return FileResponse(file_location, media_type="image/png")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+    return StreamingResponse(buffer, media_type="image/png")
