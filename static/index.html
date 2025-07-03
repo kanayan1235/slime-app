@@ -6,63 +6,74 @@
   <style>
     body {
       font-family: sans-serif;
-      background: #f0f0f0;
       padding: 2em;
       text-align: center;
+      background: #f0f0f0;
     }
-    input[type="file"] {
-      margin-bottom: 1em;
+    #result {
+      margin-top: 20px;
     }
     img {
       max-width: 100%;
+      height: auto;
       margin-top: 1em;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      border: 1px solid #ccc;
+    }
+    .loading {
+      font-weight: bold;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <h1>☔ スライム雨を降らせよう</h1>
-  <p>人物画像をアップロードすると、スライム雨エフェクトを自動で生成します。</p>
+
+  <h1>スライム雨ジェネレーター</h1>
+  <p>画像をアップロードしてスライム効果を追加します</p>
 
   <form id="uploadForm">
-    <input type="file" name="file" accept="image/png, image/jpeg" required><br>
-    <button type="submit">生成する</button>
+    <input type="file" name="file" accept="image/*" required>
+    <button type="submit">アップロードして合成</button>
   </form>
 
   <div id="result">
-    <p id="status"></p>
-    <img id="outputImage" style="display: none;">
+    <p id="status" class="loading"></p>
+    <img id="outputImage" src="" alt="">
   </div>
 
   <script>
-    const form = document.getElementById("uploadForm");
-    const statusText = document.getElementById("status");
-    const outputImage = document.getElementById("outputImage");
+    const form = document.getElementById('uploadForm');
+    const status = document.getElementById('status');
+    const output = document.getElementById('outputImage');
 
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(form);
-      statusText.textContent = "⏳ スライムを降らせています...";
-      outputImage.style.display = "none";
+      const fileInput = form.querySelector('input[type="file"]');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      status.textContent = "処理中...しばらくお待ちください。";
+      output.src = "";
 
       try {
         const res = await fetch("/upload", {
           method: "POST",
           body: formData
         });
-
-        if (!res.ok) throw new Error("アップロードに失敗しました");
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        outputImage.src = url;
-        outputImage.style.display = "block";
-        statusText.textContent = "✅ 完了しました！";
+        const data = await res.json();
+        if (data.url) {
+          output.src = data.url;
+          status.textContent = "生成完了 🎉";
+        } else {
+          throw new Error("URLが取得できませんでした");
+        }
       } catch (err) {
-        statusText.textContent = "❌ エラーが発生しました：" + err.message;
+        status.textContent = "エラーが発生しました: " + err.message;
       }
     });
   </script>
+
 </body>
 </html>
