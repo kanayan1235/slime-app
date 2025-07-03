@@ -1,5 +1,7 @@
 fastapi
 uvicorn
 python-multipart
-Pillow
+pillow
 numpy
+cloudinary
+python-dotenv
