@@ -22,7 +22,6 @@ async def upload_image(file: UploadFile = File(...)):
     with open(f"uploaded_{file.filename}", "wb") as f:
         f.write(contents)
     return FileResponse(f"uploaded_{file.filename}")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
