@@ -5,36 +5,32 @@
   <title>スライム雨合成</title>
 </head>
 <body>
-  <h1>画像アップロード</h1>
+  <h1>ケフィア雨合成</h1>
   <form id="upload-form">
-    <input type="file" id="image-input" accept="image/*" />
-    <button type="submit">アップロード</button>
+    <input type="file" id="image-input" name="file" accept="image/*" />
+    <button type="submit">アップロードして合成</button>
+    <progress id="progress" value="0" max="100" style="display:none;"></progress>
   </form>
   <br />
   <img id="result-image" style="max-width: 400px;" />
-
   <script>
-    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    document.getElementById("upload-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const fileInput = document.getElementById('image-input');
-      const file = fileInput.files[0];
-      if (!file) {
-        alert("画像を選択してください。");
-        return;
-      }
-
+      const file = document.getElementById("image-input").files[0];
+      if (!file) return alert("画像を選択してください");
       const formData = new FormData();
       formData.append("file", file);
-
+      const progress = document.getElementById("progress");
+      progress.style.display = "block";
       try {
-        const res = await fetch("https://slime-app.onrender.com/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch("/upload", { method: "POST", body: formData });
         const blob = await res.blob();
-        document.getElementById('result-image').src = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
+        document.getElementById("result-image").src = url;
+        progress.style.display = "none";
       } catch (err) {
-        alert("アップロードに失敗しました。");
+        alert("合成に失敗しました");
+        progress.style.display = "none";
       }
     });
   </script>
