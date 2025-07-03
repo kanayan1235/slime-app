@@ -103,18 +103,19 @@ async def upload(file: UploadFile = File(...)):
 
     result_filename = f"result_{file.filename}"
     result_path = os.path.join(RESULT_DIR, result_filename)
-    combined.save(result_path)
 
+    # 保存形式を拡張子で分岐（JPEGはRGBA非対応）
+    ext = os.path.splitext(file.filename)[-1].lower()
+    if ext in [".jpg", ".jpeg"]:
+        combined = combined.convert("RGB")
+        combined.save(result_path, format="JPEG")
+        media_type = "image/jpeg"
+    else:
+        combined.save(result_path)
+        media_type = "image/png"
+
+    # static に公開
     public_path = os.path.join(STATIC_DIR, result_filename)
     shutil.copyfile(result_path, public_path)
 
-    return FileResponse(public_path, media_type="image/png")
-
-from fastapi.responses import HTMLResponse
-
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    with open(index_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content, status_code=200)
+    return FileResponse(public_path, media_type=media_type)
