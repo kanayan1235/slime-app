@@ -1,54 +1,61 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
-from fastapi.responses import JSONResponse
 import numpy as np
-import cloudinary
-import cloudinary.uploader
-import os
 import math
 import random
-import io
+import os
+import shutil
+import cloudinary.uploader
+from dotenv import load_dotenv
 
-# Cloudinary 設定
+# 環境変数を読み込む
+load_dotenv()
+
+# Cloudinary設定
 cloudinary.config(
-    cloud_name="dgdqrrrzx",
-    api_key="957982971854726",
-api_secret="to_cKnWIXNVuLu7FE1Ze1pgzhX4",
-    secure=True
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
 app = FastAPI()
 
-# static フォルダ公開（任意）
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# フォルダ設定
+# パス設定
+UPLOAD_DIR = "backend/uploaded"
+RESULT_DIR = "backend/results"
+STATIC_DIR = "static"
 KEFIR_DIR = "backend/kefirs"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(RESULT_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+# 静的ファイル公開
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 def get_random_kefir_image():
     valid_exts = (".jpg", ".jpeg", ".png")
-    candidates = [f for f in os.listdir(KEFIR_DIR) if f.lower().endswith(valid_exts)]
-    if not candidates:
-        raise FileNotFoundError("kefir画像が見つかりません（jpeg/png）")
-    return os.path.join(KEFIR_DIR, random.choice(candidates))
+    files = [f for f in os.listdir(KEFIR_DIR) if f.lower().endswith(valid_exts)]
+    if not files:
+        raise FileNotFoundError("ケフィア画像が見つかりません。")
+    return os.path.join(KEFIR_DIR, random.choice(files))
 
 @app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
-    # 入力画像読み込み
-    image_bytes = await file.read()
-    character_img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+async def upload(file: UploadFile = File(...)):
+    upload_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(upload_path, "wb") as f:
+        f.write(await file.read())
 
-    # 雨画像の読み込み
-    kefir_path = get_random_kefir_image()
-    rain_base = Image.open(kefir_path).convert("RGBA")
-
+    character_img = Image.open(upload_path).convert("RGBA")
+    rain_base = Image.open(get_random_kefir_image()).convert("RGBA")
     canvas_w, canvas_h = character_img.size
     center_x, center_y = canvas_w // 2, canvas_h // 2
 
     def stretch_slime(img, scale_y=5.5):
         w, h = img.size
-        return img.resize((w, int(h * scale_y)), resample=Image.BICUBIC)
+        return img.resize((w, int(h * scale_y)), Image.BICUBIC)
 
     def apply_alpha_gradient(img, min_alpha=0.6):
         arr = np.array(img)
@@ -62,56 +69,48 @@ async def upload_image(file: UploadFile = File(...)):
     def rotate_toward_center(x, y, cx, cy):
         dx = cx - x
         dy = cy - y
-        angle = math.degrees(math.atan2(dy, dx)) - 90
-        return angle
+        return math.degrees(math.atan2(dy, dx)) - 90
 
-    def generate_slime_rain_field(base_img, canvas_size, count=120):
-        canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    def generate_slime_field(base_img, size, count=120):
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
         for _ in range(count):
             scale = random.uniform(0.1, 0.8)
-            slime = base_img.resize(
-                (int(base_img.width * scale), int(base_img.height * scale)),
-                resample=Image.BICUBIC,
-            )
-            slime = stretch_slime(slime, scale_y=random.uniform(1.3, 2.0))
-            slime = apply_alpha_gradient(slime, min_alpha=0.6)
-
-            x = random.randint(0, canvas_size[0])
-            y = random.randint(0, canvas_size[1] // 2)
+            slime = base_img.resize((int(base_img.width * scale), int(base_img.height * scale)), Image.BICUBIC)
+            slime = stretch_slime(slime, random.uniform(1.3, 2.0))
+            slime = apply_alpha_gradient(slime)
+            x = random.randint(0, size[0])
+            y = random.randint(0, size[1] // 2)
             angle = rotate_toward_center(x, y, center_x, center_y)
             rotated = slime.rotate(angle, expand=True, resample=Image.BICUBIC)
             canvas.paste(rotated, (x, y), rotated)
         return canvas
 
-    def get_contact_mask(slime_rgba):
-        alpha = np.array(slime_rgba)[:, :, 3]
+    def get_contact_mask(img):
+        alpha = np.array(img)[:, :, 3]
         return (alpha > 30).astype(np.uint8) * 255
 
-    def apply_wet_effect(base_rgba, contact_mask, intensity=0.35):
-        base_arr = np.array(base_rgba).astype(np.float32)
-        mask = contact_mask / 255.0
+    def apply_wet_effect(img, mask, intensity=0.35):
+        arr = np.array(img).astype(np.float32)
+        mask = mask / 255.0
         for c in range(3):
-            base_arr[:, :, c] = base_arr[:, :, c] * (1 - mask * intensity)
-        base_arr = np.clip(base_arr, 0, 255).astype(np.uint8)
-        return Image.fromarray(base_arr, 'RGBA')
+            arr[:, :, c] *= (1 - mask * intensity)
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
 
-    # 合成処理
-    slime_field = generate_slime_rain_field(rain_base, character_img.size)
-    contact_mask = get_contact_mask(slime_field)
-    character_wet = apply_wet_effect(character_img, contact_mask, intensity=0.4)
+    slime_field = generate_slime_field(rain_base, character_img.size)
+    mask = get_contact_mask(slime_field)
+    character_wet = apply_wet_effect(character_img, mask, 0.4)
     combined = Image.alpha_composite(character_wet, slime_field)
 
-    # メモリに保存
-    buffer = io.BytesIO()
-    combined.save(buffer, format="PNG")
-    buffer.seek(0)
+    result_filename = f"result_{file.filename.rsplit('.', 1)[0]}.png"
+    result_path = os.path.join(RESULT_DIR, result_filename)
+    combined.save(result_path)
 
-    # Cloudinaryにアップロード
-    result = cloudinary.uploader.upload(
-        buffer,
-        resource_type="image",
-        public_id=f"slime_rain/result_{file.filename}",
-        overwrite=True
-    )
+    # Cloudinaryへアップロード
+    upload_result = cloudinary.uploader.upload(result_path, folder="slime-rain")
+    url = upload_result.get("secure_url")
 
-    return JSONResponse({"url": result["secure_url"]})
+    # 後処理（保存しない場合は削除しても可）
+    os.remove(result_path)
+
+    return JSONResponse(content={"url": url})
