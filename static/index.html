@@ -2,61 +2,65 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ケフィア雨 合成アプリ</title>
+  <title>スライム雨ジェネレーター</title>
   <style>
     body {
       font-family: sans-serif;
-      text-align: center;
+      background: #f0f0f0;
       padding: 2em;
-      background: #f5f5f5;
+      text-align: center;
     }
     input[type="file"] {
-      margin: 1em 0;
+      margin-bottom: 1em;
     }
     img {
-      max-width: 90%;
+      max-width: 100%;
       margin-top: 1em;
-      border: 1px solid #ccc;
-    }
-    .loading {
-      font-size: 1.2em;
-      color: #888;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
     }
   </style>
 </head>
 <body>
-  <h1>🧪 ケフィア雨 合成アプリ</h1>
+  <h1>☔ スライム雨を降らせよう</h1>
+  <p>人物画像をアップロードすると、スライム雨エフェクトを自動で生成します。</p>
+
   <form id="uploadForm">
-    <input type="file" id="imageFile" name="file" accept=".jpg,.jpeg,.png" required><br>
-    <button type="submit">☁️ 合成開始</button>
+    <input type="file" name="file" accept="image/png, image/jpeg" required><br>
+    <button type="submit">生成する</button>
   </form>
-  <p class="loading" id="loading" style="display:none;">⏳ 合成中です…</p>
-  <img id="resultImage" src="" alt="合成結果" style="display:none;">
+
+  <div id="result">
+    <p id="status"></p>
+    <img id="outputImage" style="display: none;">
+  </div>
+
   <script>
-    const form = document.getElementById('uploadForm');
-    const loading = document.getElementById('loading');
-    const resultImage = document.getElementById('resultImage');
+    const form = document.getElementById("uploadForm");
+    const statusText = document.getElementById("status");
+    const outputImage = document.getElementById("outputImage");
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      loading.style.display = 'block';
-      resultImage.style.display = 'none';
-
       const formData = new FormData(form);
+      statusText.textContent = "⏳ スライムを降らせています...";
+      outputImage.style.display = "none";
+
       try {
-        const res = await fetch('/upload', {
-          method: 'POST',
+        const res = await fetch("/upload", {
+          method: "POST",
           body: formData
         });
-        if (!res.ok) throw new Error("合成に失敗しました");
-        const data = await res.json();
 
-        resultImage.src = data.result_url;
-        resultImage.style.display = 'block';
+        if (!res.ok) throw new Error("アップロードに失敗しました");
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        outputImage.src = url;
+        outputImage.style.display = "block";
+        statusText.textContent = "✅ 完了しました！";
       } catch (err) {
-        alert(err.message);
-      } finally {
-        loading.style.display = 'none';
+        statusText.textContent = "❌ エラーが発生しました：" + err.message;
       }
     });
   </script>
