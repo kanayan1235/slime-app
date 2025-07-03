@@ -4,7 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
 
+from fastapi import FastAPI
+
 app = FastAPI()
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    # 何か処理して return Response()
 
 # 🔓 CORSの許可（JSからのアクセスを許可）
 app.add_middleware(
