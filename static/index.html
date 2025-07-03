@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>スライム合成アップローダー</title>
+</head>
+<body>
+  <h1>スライム合成アップローダー</h1>
+  <form id="upload-form">
+    <input type="file" id="image-input" name="file" accept="image/*" required />
+    <button type="submit">アップロード</button>
+    <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
+  </form>
+  <img id="result-image" style="max-width: 400px; display:block; margin-top:20px;" />
+  <script>
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('image-input');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const progress = document.getElementById('progress-bar');
+      progress.style.display = "block";
+      progress.value = 10;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("https://slime-app-template.onrender.com/upload", {
+          method: "POST",
+          body: formData,
+        });
+        progress.value = 80;
+        const blob = await res.blob();
+        const imgUrl = URL.createObjectURL(blob);
+        document.getElementById('result-image').src = imgUrl;
+        progress.value = 100;
+      } catch (err) {
+        alert("アップロードに失敗しました。");
+      }
+    });
+  </script>
+</body>
+</html>
