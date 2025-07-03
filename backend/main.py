@@ -109,3 +109,12 @@ async def upload(file: UploadFile = File(...)):
     shutil.copyfile(result_path, public_path)
 
     return FileResponse(public_path, media_type="image/png")
+
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    with open(index_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content, status_code=200)
