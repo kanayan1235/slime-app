@@ -7,7 +7,7 @@ import uuid
 app = FastAPI()
 
 from fastapi.staticfiles import StaticFiles
-app.mount("/", StaticFiles(directory="backend/static", html=True), name="static")
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 UPLOAD_FOLDER = "backend/uploads"
 KEFIR_FOLDER = "backend/kefirs"
