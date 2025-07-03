@@ -6,9 +6,6 @@ import io
 app = FastAPI()
 from fastapi.responses import FileResponse
 
-@app.get("/")
-def index():
-    return FileResponse("static/index.html")
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     image = Image.open(file.file).convert("RGBA")
