@@ -1,57 +1,49 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-import os, random, uuid
-from fastapi.staticfiles import StaticFiles
+import os
+import uuid
 
 app = FastAPI()
 
-# 静的ファイル（frontend）のマウント
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# `/` にアクセスしたら index.html を返す
-@app.get("/")
-def read_root():
-    return FileResponse("static/index.html")
-
-# アップロード処理（例）
-@app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
-    contents = await file.read()
-    with open(f"uploaded_{file.filename}", "wb") as f:
-        f.write(contents)
-    return FileResponse(f"uploaded_{file.filename}")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-UPLOAD_FOLDER = "backend/uploaded"
-RESULT_FOLDER = "backend/results"
+UPLOAD_FOLDER = "backend/uploads"
 KEFIR_FOLDER = "backend/kefirs"
+OUTPUT_FOLDER = "backend/outputs"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULT_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+os.makedirs(KEFIR_FOLDER, exist_ok=True)
 
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)):
-    img = Image.open(file.file).convert("RGBA")
-    img = img.resize((512, 512))
+async def upload_image(file: UploadFile = File(...)):
+    # 一意なファイル名に変換して保存
+    ext = os.path.splitext(file.filename)[-1]
+    unique_filename = f"{uuid.uuid4().hex}{ext}"
+    upload_path = os.path.join(UPLOAD_FOLDER, unique_filename)
 
-    rain_files = [f for f in os.listdir(KEFIR_FOLDER) if f.lower().endswith((".png"))]
-    if not rain_files:
-        return {"error": "雨画像が見つかりません"}
+    with open(upload_path, "wb") as buffer:
+        buffer.write(await file.read())
 
-    rain_path = os.path.join(KEFIR_FOLDER, random.choice(rain_files))
-    rain = Image.open(rain_path).convert("RGBA")
-    rain = rain.resize((512, 512))
+    # 画像を開く
+    base_img = Image.open(upload_path).convert("RGBA")
 
-    combined = Image.alpha_composite(img, rain)
+    # kefir画像の1枚をランダム選択
+    kefir_files = [f for f in os.listdir(KEFIR_FOLDER) if f.lower().endswith((".png", ".jpg"))]
+    if not kefir_files:
+        return {"error": "ケフィア画像がありません"}
 
-    out_path = os.path.join(RESULT_FOLDER, f"{uuid.uuid4().hex}.png")
-    combined.save(out_path)
+    import random
+    kefir_path = os.path.join(KEFIR_FOLDER, random.choice(kefir_files))
+    kefir_img = Image.open(kefir_path).convert("RGBA")
 
- return FileResponse(f"uploaded_{file.filename}")
+    # スライム画像をベース画像に合成（中央に配置）
+    base_w, base_h = base_img.size
+    kefir_w, kefir_h = kefir_img.size
+    pos = ((base_w - kefir_w) // 2, (base_h - kefir_h) // 2)
+    base_img.paste(kefir_img, pos, kefir_img)
+
+    # 保存
+    output_path = os.path.join(OUTPUT_FOLDER, f"output_{unique_filename}")
+    base_img.save(output_path)
+
+    return FileResponse(output_path)
