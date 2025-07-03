@@ -17,8 +17,7 @@
   <script>
     document.getElementById('upload-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fileInput = document.getElementById('image-input');
-      const file = fileInput.files[0];
+      const file = document.getElementById('image-input').files[0];
       if (!file) {
         alert("画像を選択してください。");
         return;
@@ -31,19 +30,15 @@
       const formData = new FormData();
       formData.append("file", file);
 
-      try {
-        const res = await fetch("/upload", {
-          method: "POST",
-          body: formData,
-        });
-        progress.value = 80;
-        const blob = await res.blob();
-        const imgUrl = URL.createObjectURL(blob);
-        document.getElementById('result-image').src = imgUrl;
-        progress.value = 100;
-      } catch (err) {
-        alert("アップロードに失敗しました。");
-      }
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      progress.value = 80;
+      const blob = await res.blob();
+      document.getElementById('result-image').src = URL.createObjectURL(blob);
+      progress.value = 100;
     });
   </script>
 </body>
