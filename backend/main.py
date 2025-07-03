@@ -60,7 +60,8 @@ def generate_slime_effect(character_img):
         dy = cy - y
         return math.degrees(math.atan2(dy, dx)) - 90
 
-    def generate_slime_rain_field(base_img, canvas_size, count=120):
+    def generate_slime_rain_field(base_img, canvas_size, count=3
+):
         canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         for _ in range(count):
             scale = random.uniform(0.1, 0.8)
