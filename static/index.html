@@ -1,23 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>スライム合成アップローダー</title>
+  <meta charset="UTF-8" />
+  <title>スライム合成アプリ</title>
 </head>
 <body>
-  <h1>スライム合成アップローダー</h1>
-  <form id="upload-form">
-    <input type="file" id="image-input" name="file" accept="image/*" required />
+  <h1>画像アップロード</h1>
+  <form id="upload-form" enctype="multipart/form-data">
+    <input type="file" id="image-input" name="file" accept="image/*" />
     <button type="submit">アップロード</button>
     <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
   </form>
-  <img id="result-image" style="max-width: 400px; display:block; margin-top:20px;" />
+  <br />
+  <img id="result-image" style="max-width: 400px;" />
+
   <script>
     document.getElementById('upload-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fileInput = document.getElementById('image-input');
-      const file = fileInput.files[0];
-      if (!file) return;
+      const file = document.getElementById('image-input').files[0];
+      if (!file) {
+        alert("画像を選択してください。");
+        return;
+      }
 
       const progress = document.getElementById('progress-bar');
       progress.style.display = "block";
@@ -26,19 +30,15 @@
       const formData = new FormData();
       formData.append("file", file);
 
-      try {
-        const res = await fetch("https://slime-app-template.onrender.com/upload", {
-          method: "POST",
-          body: formData,
-        });
-        progress.value = 80;
-        const blob = await res.blob();
-        const imgUrl = URL.createObjectURL(blob);
-        document.getElementById('result-image').src = imgUrl;
-        progress.value = 100;
-      } catch (err) {
-        alert("アップロードに失敗しました。");
-      }
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      progress.value = 80;
+      const blob = await res.blob();
+      document.getElementById('result-image').src = URL.createObjectURL(blob);
+      progress.value = 100;
     });
   </script>
 </body>
