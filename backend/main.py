@@ -37,7 +37,8 @@ def rotate_toward_center(x, y, cx, cy):
     return angle
 
 # スライム雨の合成
-def generate_slime_rain_field(base_img, canvas_size, center_x, center_y, count=120):
+def generate_slime_rain_field(base_img, canvas_size, center_x, center_y, count=3
+):
     canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
     for _ in range(count):
         scale = random.uniform(0.1, 0.8)
