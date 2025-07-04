@@ -2,14 +2,15 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>合成完了</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>合成結果</title>
 </head>
 <body>
   <h1>スライム雨 合成完了！</h1>
-  <p>以下がアップロード画像と雨の合成結果です。</p>
-  <img src="{{image_url}}" alt="合成画像" style="max-width: 100%; height: auto;">
-  <br><br>
-  <a href="/">← 戻る</a>
+  <img src="{{ image_url }}" alt="合成画像" style="max-width: 100%;">
+  <form action="/reapply" method="post">
+    <input type="hidden" name="image_url" value="{{ image_url }}">
+    <button type="submit">さらにスライム雨を追加合成</button>
+  </form>
+  <p><a href="/">← 戻る</a></p>
 </body>
 </html>
