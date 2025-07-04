@@ -29,7 +29,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 
 # スライム雨の合成処理
-def generate_slime_rain(character_img, slime_base, count=3):
+def generate_slime_rain(character_img, slime_base, count=10):
     canvas_w, canvas_h = character_img.size
     center_x, center_y = canvas_w // 2, canvas_h // 2
     canvas = Image.new("RGBA", character_img.size, (0,0,0,0))
@@ -54,7 +54,7 @@ def generate_slime_rain(character_img, slime_base, count=3):
         return angle
 
     for _ in range(count):
-        scale = random.uniform(0.1, 0.2)
+        scale = random.uniform(0.1, 0.4)
         slime = slime_base.resize((int(slime_base.width * scale), int(slime_base.height * scale)))
         slime = stretch_slime(slime, random.uniform(1.3, 2.0))
         slime = apply_alpha_gradient(slime)
