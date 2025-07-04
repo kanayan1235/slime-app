@@ -27,7 +27,7 @@ app = FastAPI()
 
 # staticとtemplatesの設定
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="backend/templates")
 
 # 中心へ向けて回転角を計算
 def rotate_toward_center(x, y, cx, cy):
