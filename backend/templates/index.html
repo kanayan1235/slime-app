@@ -1,17 +1,15 @@
-<!-- backend/templates/index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>スライム雨ジェネレーター</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <title>スライム雨ジェネレーター</title>
 </head>
 <body>
-    <h1>スライム雨 合成アプリ</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <p>画像をアップロードしてください（人物画像）:</p>
-        <input type="file" name="file" accept="image/*" required>
-        <button type="submit">合成開始</button>
-    </form>
+  <h1>スライム雨 合成アプリ</h1>
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <p>画像をアップロードしてください（人物画像）:</p>
+    <input type="file" name="file" accept="image/*" required>
+    <button type="submit">合成開始</button>
+  </form>
 </body>
 </html>
