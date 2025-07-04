@@ -2,14 +2,14 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>スライム雨合成</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>スライム雨ジェネレーター</title>
 </head>
 <body>
-  <h1>スライム雨合成Webアプリ</h1>
+  <h1>スライム雨 合成アプリ</h1>
   <form action="/upload" method="post" enctype="multipart/form-data">
+    <p>画像をアップロードしてください（人物画像）:</p>
     <input type="file" name="file" accept="image/*" required>
-    <button type="submit">画像をアップロードして合成</button>
+    <button type="submit">合成開始</button>
   </form>
 </body>
 </html>
