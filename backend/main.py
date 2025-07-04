@@ -27,6 +27,11 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="static")
 
+# cloudinaryから再合成用に画像読み込み
+import requests
+response = requests.get(image_url)
+image = Image.open(io.BytesIO(response.content)).convert("RGBA")
+
 # 雨素材読み込み
 KEFIR_DIR = "backend/kefirs"
 def get_random_kefir_image():
@@ -115,6 +120,11 @@ async def upload(request: Request, file: UploadFile = File(...)):
         "request": request,
         "image_url": image_url
     })
+
+# 合成処理では全て RGBA で統一
+slime = slime.convert("RGBA")
+canvas = Image.new("RGBA", (w, h), (0,0,0,0))
+
 
 @app.post("/reapply")
 async def reapply(request: Request, image_url: str = Form(...)):
