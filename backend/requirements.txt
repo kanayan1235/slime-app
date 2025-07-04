@@ -6,3 +6,4 @@ numpy
 cloudinary
 python-dotenv
 jinja2
+requests
