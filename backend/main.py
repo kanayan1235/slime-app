@@ -29,7 +29,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 
 # スライム雨の合成処理
-def generate_slime_rain(character_img, slime_base, count=100):
+def generate_slime_rain(character_img, slime_base, count=3):
     canvas_w, canvas_h = character_img.size
     center_x, center_y = canvas_w // 2, canvas_h // 2
     canvas = Image.new("RGBA", character_img.size, (0,0,0,0))
