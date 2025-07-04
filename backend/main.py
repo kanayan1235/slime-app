@@ -38,7 +38,7 @@ def generate_slime_rain(character_img, slime_base, count=3):
         w, h = img.size
         return img.resize((w, int(h * scale_y)), resample=Image.BICUBIC)
 
-    def apply_alpha_gradient(img, min_alpha=0.6):
+    def apply_alpha_gradient(img, min_alpha=0.8):
         arr = np.array(img)
         h = arr.shape[0]
         gradient = np.linspace(1.0, min_alpha, h).reshape(-1, 1)
@@ -54,7 +54,7 @@ def generate_slime_rain(character_img, slime_base, count=3):
         return angle
 
     for _ in range(count):
-        scale = random.uniform(0.1, 0.8)
+        scale = random.uniform(0.1, 0.2)
         slime = slime_base.resize((int(slime_base.width * scale), int(slime_base.height * scale)))
         slime = stretch_slime(slime, random.uniform(1.3, 2.0))
         slime = apply_alpha_gradient(slime)
