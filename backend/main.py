@@ -54,7 +54,7 @@ def generate_slime_rain(character_img, slime_base, count=10):
         return angle
 
     for _ in range(count):
-        scale = random.uniform(0.1, 0.4)
+        scale = random.uniform(0.1, 0.12)
         slime = slime_base.resize((int(slime_base.width * scale), int(slime_base.height * scale)))
         slime = stretch_slime(slime, random.uniform(1.3, 2.0))
         slime = apply_alpha_gradient(slime)
@@ -70,7 +70,7 @@ def get_contact_mask(slime_rgba):
     alpha = np.array(slime_rgba)[:, :, 3]
     return (alpha > 30).astype(np.uint8) * 255
 
-def apply_wet_effect(base_rgba, contact_mask, intensity=0.4):
+def apply_wet_effect(base_rgba, contact_mask, intensity=0.25):
     base_arr = np.array(base_rgba).astype(np.float32)
     mask = contact_mask / 255.0
     for c in range(3):
